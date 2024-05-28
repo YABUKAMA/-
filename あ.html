@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eaglercraft Example</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script src="Aimbot.js"></script>
+    <script src="Eaglercraft.js"></script>
+</body>
+</html>
+class Game {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
+        this.world = new World();
+        this.aimbot = new Aimbot(this.player, this.world);
+        this.setupListeners();
+        this.startGameLoop();
+    }
+
+    setupListeners() {
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'R') {
+                this.aimbot.toggle();
+            }
+        });
+    }
+
+    startGameLoop() {
+        const gameLoop = () => {
+            this.update();
+            this.render();
+            requestAnimationFrame(gameLoop);
+        };
+        gameLoop();
+    }
+
+    update() {
+        this.aimbot.update();
+        // 他の更新処理を追加
+    }
+
+    render() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.player.render(this.ctx);
+        this.world.render(this.ctx);
+    }
+}
+
+class Player {
+    constructor(x, y) {
+        this.position = { x: x, y: y };
+        this.rotation = { yaw: 0, pitch: 0 };
+    }
+
+    render(ctx) {
+        ctx.fillStyle = 'blue';
+        ctx.fillRect(this.position.x - 10, this.position.y - 10, 20, 20);
+    }
+}
+
+class Entity {
+    constructor(x, y, type) {
+        this.position = { x: x, y: y };
+        this.type = type;
+    }
+
+    render(ctx) {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(this.position.x - 10, this.position.y - 10, 20, 20);
+    }
+}
+
+class World {
+    constructor() {
+        this.entities = [
+            new Entity(100, 100, 'Player'),
+            new Entity(400, 300, 'Player'),
+            new Entity(700, 200, 'Player')
+        ];
+    }
+
+    getEntities() {
+        return this.entities;
+    }
+
+    render(ctx) {
+        this.entities.forEach(entity => entity.render(ctx));
+    }
+}
+
+window.onload = () => {
+    const canvas = document.getElementById('gameCanvas');
+    new Game(canvas);
+};
+class Aimbot {
+    constructor(player, world) {
+        this.player = player;
+        this.world = world;
+        this.isEnabled = false;
+    }
+
+    toggle() {
+        this.isEnabled = !this.isEnabled;
+        console.log(`Aimbot ${this.isEnabled ? 'enabled' : 'disabled'}`);
+    }
+
+    update() {
+        if (!this.isEnabled) return;
+
+        let nearestEnemy = this.findNearestEnemy();
+        if (nearestEnemy) {
+            this.aimAt(nearestEnemy);
+        }
+    }
+
+    findNearestEnemy() {
+        let nearestEnemy = null;
+        let nearestDistance = Infinity;
+
+        this.world.getEntities().forEach(entity => {
+            if (this.isEnemy(entity)) {
+                let distance = this.getDistance(this.player.position, entity.position);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestEnemy = entity;
+                }
+            }
+        });
+
+        return nearestEnemy;
+    }
+
+    isEnemy(entity) {
+        return entity.type === 'Player';
+    }
+
+    getDistance(pos1, pos2) {
+        let dx = pos1.x - pos2.x;
+        let dy = pos1.y - pos2.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    aimAt(target) {
+        let deltaX = target.position.x - this.player.position.x;
+        let deltaY = target.position.y - this.player.position.y;
+
+        let angle = Math.atan2(deltaY, deltaX);
+        this.player.rotation.yaw = angle * (180 / Math.PI);
+        console.log(`Aiming at enemy: Yaw ${this.player.rotation.yaw.toFixed(2)} degrees`);
+    }
+}
